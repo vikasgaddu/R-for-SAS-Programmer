@@ -105,6 +105,21 @@ write_sas(dm_sas, file.path(output_path,'dm_sas.sas7bdat'))
 ## Writing to TXT file ----
 write.table(dm_sas, file.path(output_path,'dm_sas.txt'), row.names = FALSE, col.names = TRUE, sep = "\t")
 
+## PROC REPORT like Syntax to create TXT file -----
+library(reporter)
+dm_sdtm <- read.csv(file.path(sdtm_path,'dm.csv'), na = c("NA"))
+attributes(dm_sdtm)
+class(dm_sdtm)
+tbl <-create_table(dm_sdtm, first_row_blank = TRUE) %>% 
+  define(USUBJID,id_var = TRUE)
+rpt <- create_report(file.path(output_path,"dm_listing.txt")) %>% 
+  page_header("Client: ABC", "Study: XZY") %>%
+  titles("Listing 1.0","Analysis Data Subject Listing") %>% 
+  add_content(tbl,align = "left") %>% 
+  page_footer(Sys.time(), "Confidential","Page [pg] of [tpg]")
+  
+write_report(rpt) %>% put()
+
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----
 # Equivalent to DATA STEP###############################
 
