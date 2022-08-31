@@ -5,10 +5,14 @@
 # First task we will learn is to bring data in R data structure.
 # Just like in SAS we have datalines, libname statement, proc import etc
 
+## Importing the required libraries -----
+if(!require('tidyverse')){
+  install.packages('tidyverse')
+  library(tidyverse)
+}
+# library(tidyverse)
+
 ## Reading Raw data - SAS Dataline equivalent -----
-
-library(tidyverse)
-
 # SAS stores information in dataset, while R stores it in data frame.
 # tibble is a upgraded data frame which overcomes some of the drawbacks 
 # of data frame like inconsistent return values.
@@ -19,9 +23,25 @@ vs_raw <- tribble(~subjid, ~dbp, ~sbp, ~visit,
                   '1001', 85, 125, 'Week 2',
                   '1001', NA, 135, 'Week 3',
                   )
+vs_raw
 
-typeof(vs_raw)
-class(vs_raw)
+
+
+#What is the objects data type (low-level)?
+# Returns values like NULL,logical, integer,double, complex, environment, symbol
+typeof(vs_raw$dbp) 
+
+#Mutually exclusive classification of objects according to their basic structure
+# types "integer" and "double" are returned as "numeric"
+# types "special" and "built in" are returned as "function"
+mode(vs_raw$dbp)
+
+# What kind of object is it(High level)?
+# For Vectors Class will return atomic datatypes like character, numeric, integer etc
+# For objects like list, matrix, data.frame (tibble) and array the structure name itself is returned.
+# This helps us to figure out which methods/functions are available for us.
+class(vs_raw$dbp) 
+
 
 ### Printing data and metadata -----
 # Looking at the contents of your data frame
@@ -151,6 +171,11 @@ ex <- tribble(~subjid,~exstdtc,~exendtc,
 )
 ex_sorted <- ex %>% arrange(subjid, exstdtc)
 
+## Rearrange variables using RELOCATE -------
+
+ex_arrange <- ex %>% relocate(exendtc, .before =exstdtc )
+ex_arrange
+
 ## Creating Variable --SEQ variable ----
 
 exseq <- ex %>% group_by(subjid) %>% 
@@ -165,10 +190,10 @@ exlong <- exseq %>%
 ## Selecting FIRST. record for a by group -----
 exfirst <- exlong %>% 
   arrange(subjid,exdtc) %>% 
-  group_by(subjid) %>% 
   filter(exdtc != 'NA') %>% 
+  group_by(subjid) %>% 
   select(subjid, exdtc) %>% 
-  slice(1)
+  slice(1) # slice_head may also work here
 exfirst
 
 ## Selecting LAST. record for a by group ------
@@ -305,18 +330,55 @@ yearc
 str(yearc)
 typeof(yearc)
 
-### Using sprintf function ------
+### Using sprintf function (C function printf) ------
 
-sprintf("%f", pi)
-sprintf("%.3f", pi)
-sprintf("%1.0f", pi)
-sprintf("%5.1f", pi)
-sprintf("%05.1f", pi)
-sprintf("%+f", pi)
-sprintf("% f", pi)
+sprintf("%f", pi) # Floating point number
+sprintf("%.3f", pi) # 3 decimal place
+sprintf("%1.0f", pi) # first value left of decimal place
+sprintf("%5.1f", pi) #fixed width
+sprintf("%05.1f", pi) # zero padded
+sprintf("%+f", pi) # Plus sign before number
+sprintf("% f", pi) #adding one space before the number
 sprintf("%-10f", pi) # left justified
+sprintf("%5.1f%%",10) # Escaping % sign
 
-### Creating formats using VALUE function equivalent to PROC FORMAT -----
+patient <- c('1001','1002')
+conmed <- c('Tylenol','Asprin')
+cmdt <- c('2022-08-08','2022-08-09')
+
+#potentially can be used for patient narrative?
+sprintf("Patient %s took %s on %s", patient,conmed,cmdt)
+
+# getting npct type of structure
+count <- c(10,20)
+pct <- c(50,100)
+sprintf("%d (%5.1f%%)",count,pct)
+
+# for 100% we don't want decimal place
+npct <- function(count,pct){
+  pctf <- ifelse(pct == 100, "100",sprintf("%5.1f",pct))
+  npct_f <- sprintf("%d (%s%%)",count,pctf)
+  return(npct_f)
+}
+print(npct(count,pct))
+
+
+### Using Format function --------
+
+today <- format(Sys.Date(),format="%d%b%Y")
+today
+class(today)
+
+a <- 100.01
+a_c <- format(a,digits=7, nsmall =2)
+a_c
+a_c <- format(a,digits=6, nsmall =3)
+a_c
+
+
+## Converting Character to character
+
+### Creating formats using VALUE function -----
 library(fmtr)
 fmt_sex <- value(
   condition(x =='Male', "M"),
@@ -358,18 +420,45 @@ pctn
 
 ### Using formats ------
 
+fmt_vis <- value(
+  condition(x == "visit 1", 1),
+  condition(x =='visit 2', 2)
+)
 
+vis <- c('visit 1','visit 2')
+visn <- fapply(vis, fmt_vis)
+visn
+typeof(visn)
 
+##Numeric Function -------
+round(pi,1)
+ceiling(pi)
+floor(pi)
+trunc(pi)
+signif(pi,6)
 
 
 ##String manipulation ----------
+### Concatenating strings -----
+library(stringr)
+siteid <- c('1001','1101','1323')
+studyid_siteid <- str_c("ABC-102",siteid,sep='-')
+studyid_siteid
+subjid <- c('2400','2401','2402')
+usubjid <- str_c(studyid_siteid,subjid,sep = '-')
+usubjid
 
 ### equivalent to SUBSTR function--------
-
+vis <- "Week 1"
+visn <- substr(vis,5,6)
+visn
 
 ### equivalent to SCAN function -------
 
-
+vis_split <- strsplit(vis, split = "/s")
+vis_split
+visn <- vis_split[1][1]
+visn
 ### length of a string -------
 
 invname <- randomNames::randomNames(20)
@@ -390,54 +479,226 @@ invname_cmpbl
 
 ### Making string upcase, lowcase , titlecase ------
 
+title <- "LISTING 10.1.1.1 Listing of Demographic"
+str_to_upper(title) #upcase
+str_to_lower(title) #lowcase
+str_to_title(title) #propcase
+str_to_sentence(title) #not sure if there is equivalent in SAS
+
+
+### Wrap Function -----
+long_string <- "This is a very long string that cannot be on one single line"
+wrapped_string <- str_wrap(long_string,width = 20)
+cat(wrapped_string )
+
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------
 
 #Working with Dates-------
-
-## Year, month and day stored in separate variables ------
-# Sample Formatting Codes
-# %d = day as a number
-# %a = abbreviated weekday
-# %A = Un-abbreviated weekday
-# %m = month as number
-# %b = abbreviated month
-# %B = un-abbreviated month
-# %y = 2-digit year
-# %Y = 4-digit year
+## Date formatting codes ------
+# Sample Formatting Codes 	
+# %d = day as a number [01-31]
+# %a = abbreviated weekday [Mon]
+# %A = Un-abbreviated weekday [Monday]
+# %m = month as number 	[00-12]
+# %b = abbreviated month [Jan]
+# %B = un-abbreviated month [January]
+# %y = 2-digit year [07]
+# %Y = 4-digit year [2007]
 # %H = hour
 # %M = minute
 # %S = second
+
+## Converting numeric value to date -------
+library(lubridate)
 library(tidyverse)
 
+# A Date is stored as number of days since 1Jan1970
+x <- 0
+class(x)
+xdt <- as_date(x)
+xdt
+class(xdt)
+typeof(xdt)
 
-df_date <- df_date %>%
-  mutate(
-    iso_dtc = case_when(
-      (!is.na(day)) ~ paste(ifelse((!is.na(year)),'-',sprintf("%4.0f", year)),
-                          ifesle((!is.na(month)),'-',sprintf("%02.0f",month)),
-                          sprintf("%02f",day)
-                          )
-      (!is.na(month)) ~ paste(ifelse((!is.na(year)),'-',sprintf("%4.0f", year)),
-                          sprintf("%02.0f",month)
-                          )
-      (!is.na(year)) ~ sprintf("%4.0f",year)
-      )
-    )
-df_date
-df_date$indtc <- paste(year,month,day,sep='-')
-df_date$indt_8601 <- as.character(as.Date(df_date$indtc, "%Y-%m-%d"))
+tr_date <- tibble(vsdtn = c(-1,0,1))
+tr_date
 
-df_date
 
-#Checking attributes of our new variable
-attributes(df_date)
-str(df_date)
-class(df_date$indt)
-as.numeric(df_date$indt)
+tr_daten <- tr_date %>% 
+  mutate(vsdtc <- as_date(vsdtn))
+tr_daten
 
-# date9 type of formatting - month not showing up in upper case
-format(df_date$indt, "%d%b%Y")
-df_date
-df_date$indt <- format(df_date$indt, "%d%b%Y")
-df_date
+## Converting string value to date -------
+#When string is in standard form.
+x <- "1970-01-01"
+xdt <- as.Date(x)
+xdt
+
+#When string is not in standard form.
+#Note month is capital.
+x <- "1JAN1970"
+xdt <- as.Date(x, format="%d%b%Y")
+xdt
+class(xdt)
+
+## Converting Date to character  --------
+xdtc <- format(xdt,"%d%b%Y")
+xdtc
+class(xdt)
+
+## Converting Date to numeric -------
+numx <- as.numeric(xdt)
+numx
+class(numx)
+
+# Calculating number of days
+basedt <- as.Date(c("2022-01-01","2022-01-01"))
+basedt
+adt <- as.Date(c("2022-01-15","2022-02-28"))
+adt
+
+lbdt <- tibble(basedt,adt)
+lbdt
+
+lbdt_ady <- lbdt %>% 
+  mutate(ady = adt - basedt,
+         ady1 = adt - basedt + 1)
+
+lbdt_ady
+
+## Extracting day, month and year from a date ------
+year(adt)
+month(adt)
+day(adt)
+
+# Working with DateTime ------
+
+## Converting numeric value to time ------
+x <- 75
+xtm <- as_datetime(x)
+# Datetime in R is stored as Portable operating system interface 
+class(xtm)
+as.numeric(xtm)
+typeof(xtm)
+isodt1 <- format(xtm,"%Y-%m-%dT%H:%M:%S")
+class(isodt1)
+
+## Converting individual datetime components into datetime ------
+isodtc2 <- ISOdatetime(1970,1,1,1,15,0)
+isodtc2
+class(isodtc2)
+
+## Converting string value to datetime -----
+x <- "1970-01-01 2:10"
+xtm <- as.POSIXct(x)
+xtm
+class(xtm)
+
+y <- "1970-01-02 3:12"
+ytm <- as.POSIXct(y)
+ytm
+
+difftm <- ytm - xtm
+difftm
+as.numeric(difftm,units="hours")
+
+## Extracting datetime components -----
+exttm <- as.POSIXlt("1970-01-01 2:10")
+exttm
+class(exttm)
+exttm$min
+exttm$mon # note month is counted from 0, so the value will be
+# one less than shown in date
+exttm$year
+exttm$day
+exttm$zone
+
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------
+#Basic Statistics -------
+library(tidyverse)
+##Summarizing data PROC MEANS ----------
+lb <- read_rds(file.path("./sdtmdata","lb.rds"))
+lb
+lb_bili <- lb %>% 
+  filter(LBTESTCD == "BILI" & LBCAT =="CHEMISTRY")
+lb_bili
+summary(lb_bili$LBSTRESN)
+
+# PROC MEANS ignores missing values by default but summarize does not.
+lb_bili %>% 
+  summarise(N = n(),
+            mean = mean(LBSTRESN, na.rm=TRUE ),
+            min = min(LBSTRESN, na.rm=TRUE),
+            nmiss = sum(is.na(LBSTRESN))
+            )
+
+## Group by ------
+lb %>% 
+  filter(LBCAT %in% c('CHEMISTRY','HEMATOLOGY'))  %>% 
+  group_by(LBCAT,LBTESTCD,VISITNUM,VISIT) %>% 
+  summarise(N = n(),
+            mean = mean(LBSTRESN, na.rm=TRUE ),
+            min = min(LBSTRESN, na.rm=TRUE),
+            nmiss = sum(is.na(LBSTRESN))
+  )
+
+#formatted stats
+lb %>% 
+  filter(LBCAT %in% ('CHEMISTRY')) %>% 
+  group_by(LBCAT,LBTESTCD,VISITNUM,VISIT) %>% 
+  summarise(N = fmt_n(LBSTRESN),
+            `Mean (SD)` = fmt_mean_sd(LBSTRESN),
+            Median = fmt_median(LBSTRESN),
+            `Q1 - Q3` = fmt_quantile_range(LBSTRESN),
+            Range  = fmt_range(LBSTRESN)
+  ) %>% 
+  pivot_longer(c('N','Mean (SD)','Median','Q1 - Q3','Range'), names_to = "Stat", values_to = "Col")
+
+## Getting distinct Values --------
+dm <- read_rds(file.path("./sdtmdata","dm.rds"))
+dm
+dm_arm <- dm %>% 
+  select(ARMCD,ARM) %>% 
+  distinct()
+dm_arm
+
+dm_race <- dm %>% 
+  select(RACE) %>% 
+  distinct()
+dm_race
+
+## Getting distinct counts -------
+bign <- dm %>% 
+  select(USUBJID,ARMCD,ARM) %>% 
+  filter(ARMCD != "SCRNFAIL") %>% 
+  group_by(ARMCD,ARM) %>% 
+  summarize(n = n())
+bign
+bign$ARM
+bign['ARMCD']
+
+tbign <- bign %>% 
+  select(ARMCD,n) %>% 
+  pivot_wider(names_from = ARMCD,
+              names_prefix='n',
+              values_from = n)
+tbign
+
+tbign$n1
+
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------
+
+#HELP-------
+
+## Vignettes ------
+vignette("dplyr", package = "dplyr")
+vignette("colwise",package="dplyr")
+
+## Help pages ---------
+help("summarise", package= "dplyr")
+
+## Cheat sheet -------
+#https://www.rstudio.com/resources/cheatsheets/
 
