@@ -1,6 +1,23 @@
 # R Programming for SAS Programmer ------
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----
+
+#Creating LOG file -------
+# R does not create LOG file by default so we will need help from 
+# logr package to store the log file.
+if(!require('logr')){
+  install.packages('logr')
+  library(logr)
+}
+log_file <- file.path(".","Source_code.log")
+log_file
+lf <- log_open(log_file,logdir=F,autolog=T, show_notes = F)
+
+sep("Example of autolog feature")
+# log_close()
+# writeLines(readLines(lf))
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----
 # Importing Data -----
 # First task we will learn is to bring data in R data structure.
 # Just like in SAS we have datalines, libname statement, proc import etc
@@ -365,6 +382,7 @@ print(npct(count,pct))
 
 ### Using Format function --------
 
+
 today <- format(Sys.Date(),format="%d%b%Y")
 today
 class(today)
@@ -374,6 +392,30 @@ a_c <- format(a,digits=7, nsmall =2)
 a_c
 a_c <- format(a,digits=6, nsmall =3)
 a_c
+
+
+### Using FMT_ functions ------
+
+# Once you have the count, you can format npct 
+#using fmt_cnt_pct function.
+
+v1 <- c(4, 3, 3)
+# Format count and percent: This function is little different then other
+# fmt_ function. As this one does not actually calculate counts, it will
+# Calculate percentages and concatenate to the count. 
+# eg 4/3 * 100 = 133.33 => 4 (133.33%)
+# This is a wrong percentage, so to correct it, we can also give our
+# own denominator vector.
+fmt_cnt_pct(v1,c(10))
+
+# Summary stats function
+table(v1)
+adae <- tribble(~aedecod,"Headache","Headache")
+adae <- adae %>% group_by(aedecod)
+adae %>% count(aedecod) %>% fmt_cnt_pct(c(10))
+fmt_n(v1)
+fmt_mean_sd(v1)
+summarise(v1)
 
 
 ## Converting Character to character
@@ -439,6 +481,29 @@ signif(pi,6)
 
 
 ##String manipulation ----------
+# Table 5.1: Tidyverse String Functions
+# Function	Description
+# stringr::str_c()	Concatenate two strings, specifying sep as the separator
+# stringr::str_dup()	Duplicate a string a specified number of times
+# stringr::str_length()	Return the length of a string
+# stringr::str_flatten()	Collapse a vector of character values
+# stringr::str_split()	Split a string using the specified pattern. This returns a list, use unlist() to return a vector
+# stringr::str_glue()	Replaces sprintf(), allows for complex string concatenation using {}
+# stringr::str_to_lower(), stringr::str_to_upper(), stringr::str_to_title(), stringr::str_to_sentence()	Control the case of strings
+# stringr::str_pad()	Pad a string with specified characters, on either the left, the right, or both sides of the string
+# stringr::str_trunc()	Limit a string to a certain width
+# stringr::str_wrap()	Wrap a string to another line after a certain length
+# stringr::str_trim()	Remove whitespace from the left and right side
+# stringr::str_squish()	Remove repeated whitespace from the entire string
+# stringr::word()	Subset the string by characters separated by whitespace
+# stringr::str_extract()	A generalized form of word to extract characters following regex patterns
+# stringr::str_detect()	Return TRUE / FALSE if specified pattern is detected in string
+# stringr::str_replace(), stringr::str_replace_all()	Replace character values in a string, either once, or for all occurrences
+# stringr::str_remove(), stringr::str_remove_all()	Remove specified character values from string
+# stringr::str_starts(), stringr::str_ends()	Return logical value when string starts/ends with specified characters
+# stringr::str_which()	Returns index of vector that has a match
+# stringr::str_subset()	Returns element of vector that has a match
+
 ### Concatenating strings -----
 library(stringr)
 siteid <- c('1001','1101','1323')
@@ -490,6 +555,16 @@ str_to_sentence(title) #not sure if there is equivalent in SAS
 long_string <- "This is a very long string that cannot be on one single line"
 wrapped_string <- str_wrap(long_string,width = 20)
 cat(wrapped_string )
+
+
+### scales function -----
+# scales::number()	Round a numeric value and convert to string, aruments control prefixes, suffixes, comma separators, and accuracy
+# scales::dollar()	A shortcut to using number(), using $ as a prefix
+# scales::percent()	A shortcut to using number(), using % as a suffix
+# scales::pvalue()	A shortcut to using number(), in standard p-value format
+# scales::scientific()	A shortcut to using number(), in standart scientific notation
+# 
+
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------
 
@@ -686,6 +761,82 @@ tbign <- bign %>%
 tbign
 
 tbign$n1
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------
+#Comparing data - PROC COMPARE equivalent ------
+
+#When things match up
+vs_prod <- tribble(~usubjid, ~visitnum, ~vstestcd, ~vsorres,
+              "1001",1,"SYSBP", "120",
+              "1001",2,"SYSBP", "122")
+vs_prod
+
+vs_qc <- tribble(~usubjid, ~visitnum, ~vstestcd, ~vsorres,
+                   "1001",1,"SYSBP", "120",
+                   "1001",2,"SYSBP", "122")
+
+vs_qc
+
+if (as.character(all_equal(vs_prod,
+                           vs_qc,  
+                           ignore_col_order = FALSE,
+                           ignore_row_order = FALSE)) == "TRUE" ) {
+  print("No unequal values where found. All values matched exactly.")
+}else{
+  
+  print("Unequal Values where found. Details below.")
+  diff1 <- anti_join(vs_prod, vs_qc) 
+  diff1
+  
+  library(diffdf)
+  diff2 <- diffdf(vs_prod, vs_qc)
+  diff2
+  
+  library(arsenal)
+  summary(comparedf(vs_prod, vs_qc))
+  
+}
+
+
+
+
+
+
+# When observation match but variable/value/observation does not match
+
+vs_prod <- tribble(~usubjid, ~visitnum, ~vstestcd, ~vsorres,
+                   "1001",1,"SYSBP", "120",
+                   "1001",2,"SYSBP", "122")
+vs_prod
+
+vs_qc <- tribble(~usubjid, ~visitnum, ~vstestcd, ~vsorres, ~vsstresn,
+                 "1001",1,"SYSBP", "120",120,
+                 "1001",2,"SYSBP", "123",123,
+                 "1001",3,"SYSBP", "123",123)
+
+vs_qc
+
+if (as.character(all_equal(vs_prod,
+                          vs_qc,  
+                          ignore_col_order = FALSE,
+                          ignore_row_order = FALSE)) == "TRUE" ) {
+  print("No unequal values where found. All values matched exactly.")
+}else{
+  print("Unequal Values where found. Details below.")
+  
+  diff1 <- anti_join(vs_prod, vs_qc) 
+  diff1
+  #class(diff1)
+  
+  diff2<- diffdf(vs_prod, vs_qc, keys=c('usubjid','visitnum','vstestcd'))
+  diff2
+  #class(diff2)
+  
+  diff3 <- summary(comparedf(vs_prod, vs_qc, by_group=c('usubjid','visitnum','vstestcd')))
+  diff3     
+  
+  #class(diff3)
+}
 
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------
