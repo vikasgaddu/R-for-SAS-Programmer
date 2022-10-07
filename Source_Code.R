@@ -1,6 +1,35 @@
 # R Programming for SAS Programmer ------
 
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----
+# R Basics-----
+## Vectors in R ----
+#: Homogeneous Data structure. Stores similar type of data
+
+# Assigning a value
+usubjid <- c('1001','1002','1003')
+# Viewing the contents
+usubjid
+print(usubjid)
+
+# Subset using an index like SAS Array.
+usubjid[1]
+
+# Subset using range of index
+usubjid[1:2]
+
+# R names are case sensitive
+Usubjid[1] # Error
+
+# Applies operations on all elements of vectors
+usubjid != 1003
+
+# A Boolean vector can be passed to subset a vector
+usubjid[usubjid != '1003']
+
+
+
+
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----
 
 #Creating LOG file -------
 # R does not create LOG file by default so we will need help from 
@@ -28,6 +57,7 @@ if(!require('tidyverse')){
   library(tidyverse)
 }
 # library(tidyverse)
+
 
 ## Reading Raw data - SAS Dataline equivalent -----
 # SAS stores information in dataset, while R stores it in data frame.
